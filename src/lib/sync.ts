@@ -4,6 +4,7 @@ import {
   getFamilyAnnouncements,
   getFamilyEvents,
   pullInvitation,
+  joinFamilyRemote,
   checkServerReachable,
 } from "./api";
 import { db } from "@/database/db";
@@ -171,6 +172,9 @@ async function processPendingInvites() {
 
       saveRemoteFamilyLocally({ ...decrypted, id: decrypted.familyId }, item.userId, item.role);
 
+      // Register on server (best-effort)
+      joinFamilyRemote(decrypted.familyId, item.userId, item.role).catch(() => {});
+
       // Remove from pending invites
       db.runSync("DELETE FROM pending_invites WHERE id = ?", [item.id]);
 
@@ -222,24 +226,33 @@ export function stopBackgroundSync() {
 }
 
 async function pullRemoteData() {
-  const { family, members, loadMembers } = useFamilyStore.getState();
+  const { family, loadMembers } = useFamilyStore.getState();
   const { user } = useUserStore.getState();
   if (!family || !user) return;
 
-  // Check if our membership was approved on the server
+  // Sync all server members into local DB
   const { ok, data } = await getFamilyMembers(family.id);
   if (ok && data?.members) {
-    const myEntry = data.members.find((m: any) => m.userId === user.id);
-    if (myEntry && myEntry.status === "approved") {
-      const localMember = members.find((m) => m.userId === user.id);
-      if (localMember && localMember.status !== "approved") {
+    for (const m of data.members) {
+      const existing = db.getFirstSync<{ id: string }>(
+        "SELECT id FROM family_members WHERE userId = ? AND familyId = ?",
+        [m.userId, family.id],
+      );
+      if (!existing) {
         db.runSync(
-          "UPDATE family_members SET status = ? WHERE familyId = ? AND userId = ?",
-          ["approved", family.id, user.id],
+          `INSERT INTO family_members (id, familyId, userId, displayName, role, status, joinedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [m.id, m.familyId, m.userId, m.displayName ?? "", m.role, m.status, m.joinedAt ?? new Date().toISOString()],
         );
-        await loadMembers(family.id);
+      } else if (m.status === "approved") {
+        // Update status to approved if server says so
+        db.runSync(
+          "UPDATE family_members SET status = ? WHERE userId = ? AND familyId = ?",
+          ["approved", m.userId, family.id],
+        );
       }
     }
+    await loadMembers(family.id);
   }
 
   // Pull data from other devices

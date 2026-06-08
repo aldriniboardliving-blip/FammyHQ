@@ -8,10 +8,13 @@ import {
   syncEvent,
   deleteEventRemote,
   syncFamily,
+  pushInvitation,
+  approveMember,
+  joinFamilyRemote,
   checkServerReachable,
 } from "./api";
 
-export type EntityType = "family" | "task" | "announcement" | "event" | "member";
+export type EntityType = "family" | "task" | "announcement" | "event" | "member" | "invitation";
 export type Operation = "create" | "update" | "delete";
 
 interface OutboxEntry {
@@ -112,6 +115,21 @@ async function pushToServer(
       }
       const { ok } = await syncEvent(payload);
       return ok;
+    }
+    case "invitation": {
+      const { ok } = await pushInvitation(payload);
+      return ok;
+    }
+    case "member": {
+      if (operation === "update" && payload.status === "approved") {
+        const { ok } = await approveMember(payload.familyId, payload.memberId);
+        return ok;
+      }
+      if (operation === "create") {
+        const { ok } = await joinFamilyRemote(payload.familyId, payload.userId, payload.role);
+        return ok;
+      }
+      return false;
     }
     default:
       return false;

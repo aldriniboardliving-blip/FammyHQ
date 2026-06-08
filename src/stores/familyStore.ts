@@ -4,7 +4,7 @@ import { generateId, generateInviteCode, normalizeInviteCode } from '@/lib/utils
 import { useUserStore } from './userStore';
 import { enqueue } from '@/lib/outbox';
 import { encryptPayload, decryptPayload } from '@/lib/crypto';
-import { pushInvitation, pullInvitation } from '@/lib/api';
+import { joinFamilyRemote, pullInvitation } from '@/lib/api';
 
 export interface Family {
   id: string;
@@ -84,16 +84,20 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     // Enqueue family for general sync (creates on server via outbox)
     enqueue('family', familyId, 'create', family);
 
-    // Push encrypted invitation to relay server
+    // Enqueue encrypted invitation to relay server via outbox
+    // (retried automatically if offline)
     try {
       const payload = { familyId, name, inviteCode, createdBy: userId, createdAt: now };
       const { ciphertext, iv, salt } = encryptPayload(payload, inviteCode);
-      const pushResult = await pushInvitation({ code: inviteCode, ciphertext, iv, salt, familyId });
-      if (!pushResult.ok) {
-        console.warn('Invitation push failed:', pushResult.error);
-      }
+      enqueue('invitation', `inv-${familyId}`, 'create', {
+        code: inviteCode,
+        ciphertext,
+        iv,
+        salt,
+        familyId,
+      });
     } catch (err) {
-      console.warn('Invitation push threw:', err);
+      console.warn('Failed to encrypt invitation:', err);
     }
 
     return family;
@@ -162,6 +166,9 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
           'INSERT INTO family_members (id, familyId, userId, role, status, joinedAt) VALUES (?, ?, ?, ?, ?, ?)',
           [memberId, decrypted.familyId, userId, role, 'pending', now]
         );
+
+        // Register on server (best-effort)
+        joinFamilyRemote(decrypted.familyId, userId, role).catch(() => {});
 
         db.runSync('UPDATE users SET familyId = ?, updatedAt = ? WHERE id = ?', [decrypted.familyId, now, userId]);
 
