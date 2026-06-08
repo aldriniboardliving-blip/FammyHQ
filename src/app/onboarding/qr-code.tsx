@@ -1,3 +1,5 @@
+import QRCode from 'react-native-qrcode-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFamilyStore } from '@/stores/familyStore';
@@ -15,7 +17,7 @@ export default function QRCodeScreen() {
       <View style={styles.content}>
         <AnimatedSection animation="fadeUp" delay={50}>
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>📱</Text>
+            <Ionicons name="qr-code-outline" size={32} color={Colors.light.primary} />
           </View>
           <Text style={styles.title}>QR Code Invitation</Text>
           <Text style={styles.description}>
@@ -25,10 +27,12 @@ export default function QRCodeScreen() {
 
         <AnimatedSection animation="zoom" delay={200}>
           <View style={styles.qrFrame}>
-            <View style={styles.qrPlaceholder}>
-              <Text style={styles.qrLargeIcon}>📱</Text>
-              <Text style={styles.qrSubtext}>QR Code Placeholder</Text>
-            </View>
+            <QRCode
+              value={family.inviteCode}
+              size={200}
+              backgroundColor={Colors.light.backgroundCard}
+              color={Colors.light.text}
+            />
           </View>
         </AnimatedSection>
 
@@ -98,17 +102,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     borderStyle: 'dashed',
     marginBottom: 32,
-  },
-  qrPlaceholder: {
-    width: 180,
-    height: 180,
-    backgroundColor: Colors.light.backgroundElement,
-    borderRadius: BorderRadius.lg,
-    justifyContent: 'center',
     alignItems: 'center',
   },
-  qrLargeIcon: { fontSize: 48, marginBottom: 8 },
-  qrSubtext: { fontSize: 12, color: Colors.light.textTertiary },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

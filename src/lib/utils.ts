@@ -8,7 +8,7 @@ export const generateId = (prefix: string): string => {
 };
 
 export const generateInviteCode = (): string => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let result = '';
   for (let i = 0; i < 6; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -16,11 +16,14 @@ export const generateInviteCode = (): string => {
   return result;
 };
 
-// Maps ambiguous characters to their unambiguous counterparts
-// Generated codes never contain I, O, 1, 0 — this maps user typos
+// Maps ambiguous user-typed characters to their unambiguous code counterparts.
+// Generated codes use only: ABCDEFGHJKMNPQRSTUVWXYZ23456789
+// (excludes I, O, L, 0, 1 to avoid visual ambiguity)
 const CHAR_MAP: Record<string, string> = {
-  'O': '0', 'o': '0',
-  'I': '1', 'i': '1', 'l': '1',
+  '0': 'Q',   // digit 0 → letter Q
+  'O': 'Q', 'o': 'Q',  // letter O → Q
+  'l': '1',   // lowercase L → digit 1 (both excluded, mapped for consistency)
+  '1': 'I',   // digit 1 → letter I (both excluded, mapped for consistency)
 };
 
 export const normalizeInviteCode = (raw: string): string => {

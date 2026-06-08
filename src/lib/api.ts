@@ -14,7 +14,7 @@ async function apiCall<T>(
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       signal: controller.signal,

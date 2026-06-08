@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { db } from '@/database/db';
 import { generateId, generateInviteCode, normalizeInviteCode } from '@/lib/utils';
 import { useUserStore } from './userStore';
-import { enqueue } from '@/lib/outbox';
+import { enqueue, processOutbox } from '@/lib/outbox';
 import { encryptPayload, decryptPayload } from '@/lib/crypto';
 import { joinFamilyRemote, pullInvitation } from '@/lib/api';
 
@@ -99,6 +99,9 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     } catch (err) {
       console.warn('Failed to encrypt invitation:', err);
     }
+
+    // Push to server immediately (don't wait for 30s background interval)
+    processOutbox().catch(() => {});
 
     return family;
   },
