@@ -2,7 +2,7 @@
 // For local dev: your machine's LAN IP so phones can reach it
 export const API_BASE_URL = __DEV__
   ? "http://192.168.1.100:3000"
-  : "https://fammy-production.up.railway.app";
+  : "https://fammyhq-production.up.railway.app";
 
 // : "https://api.fammyhq.com";
 
