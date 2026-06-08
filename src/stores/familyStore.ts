@@ -84,14 +84,16 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     // Enqueue family for general sync (creates on server via outbox)
     enqueue('family', familyId, 'create', family);
 
-    // Push encrypted invitation to relay server (fire-and-forget)
-    const payload = { familyId, name, inviteCode, createdBy: userId, createdAt: now };
+    // Push encrypted invitation to relay server
     try {
+      const payload = { familyId, name, inviteCode, createdBy: userId, createdAt: now };
       const { ciphertext, iv, salt } = encryptPayload(payload, inviteCode);
-      // Fire and forget — don't block UI
-      pushInvitation({ code: inviteCode, ciphertext, iv, salt, familyId });
+      const pushResult = await pushInvitation({ code: inviteCode, ciphertext, iv, salt, familyId });
+      if (!pushResult.ok) {
+        console.warn('Invitation push failed:', pushResult.error);
+      }
     } catch (err) {
-      console.error('Failed to push encrypted invitation:', err);
+      console.warn('Invitation push threw:', err);
     }
 
     return family;
@@ -126,22 +128,21 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     }
 
     // Step 2: Try remote invitation pull (encrypted relay)
-    try {
-      const { ok, data } = await pullInvitation(normalized);
-      if (ok && data?.invitation) {
-        // Decrypt the payload using the invite code
-        const decrypted = decryptPayload<{
-          familyId: string;
-          name: string;
-          inviteCode: string;
-          createdBy: string;
-          createdAt: string;
-        }>(
-          data.invitation.ciphertext,
-          data.invitation.iv,
-          data.invitation.salt,
-          normalized
-        );
+    const pullResult = await pullInvitation(normalized);
+    if (pullResult.ok && pullResult.data?.invitation) {
+      // Decrypt the payload using the invite code
+      const decrypted = decryptPayload<{
+        familyId: string;
+        name: string;
+        inviteCode: string;
+        createdBy: string;
+        createdAt: string;
+      }>(
+        pullResult.data.invitation.ciphertext,
+        pullResult.data.invitation.iv,
+        pullResult.data.invitation.salt,
+        normalized
+      );
 
         // Save family locally (insert if not exists)
         const existing = db.getFirstSync<{ id: string }>(
@@ -180,9 +181,11 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         set({ family: remoteFamily });
         return remoteFamily;
       }
-    } catch (err) {
-      console.log('Remote invitation lookup failed (offline?):', err);
-    }
+
+      // Invitation not found or server unreachable — show the error
+      const reason = pullResult.error
+        ? `Server error: ${pullResult.error}`
+        : 'Invitation not found on server';
 
     // Step 3: Offline fallback — save as pending invite for retry
     const pendingId = generateId('PIN');
@@ -191,7 +194,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
       [pendingId, normalized, userId, role]
     );
 
-    throw new Error('Could not find family. The invite will be retried automatically when connected.');
+    throw new Error(`Could not find family. ${reason}. The invite will be retried automatically when connected.`);
   },
 
   loadFamily: async (userId: string) => {

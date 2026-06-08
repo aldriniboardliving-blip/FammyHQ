@@ -1,10 +1,6 @@
 // Server URL — change this to your deployed server address
 // For local dev: your machine's LAN IP so phones can reach it
-export const API_BASE_URL = __DEV__
-  ? "http://192.168.1.100:3000"
-  : "https://fammyhq-production.up.railway.app";
-
-// : "https://api.fammyhq.com";
+export const API_BASE_URL = "https://fammyhq-production.up.railway.app";
 
 interface ApiResponse<T> {
   success: boolean;
