@@ -122,7 +122,7 @@ async function pushToServer(
     }
     case "member": {
       if (operation === "update" && payload.status === "approved") {
-        const { ok } = await approveMember(payload.familyId, payload.memberId);
+        const { ok } = await approveMember(payload.familyId, payload.userId);
         return ok;
       }
       if (operation === "create") {

@@ -95,19 +95,19 @@ router.get("/:id/members", (req, res) => {
   }
 });
 
-// Approve a pending member
-router.post("/:familyId/approve/:memberId", (req, res) => {
+// Approve a pending member (by userId, not internal DB id)
+router.post("/:familyId/approve/:userId", (req, res) => {
   try {
     const db = getDb();
-    const result = db.prepare("UPDATE family_members SET status = ? WHERE id = ? AND familyId = ?")
-      .run("approved", req.params.memberId, req.params.familyId);
+    const result = db.prepare("UPDATE family_members SET status = ? WHERE userId = ? AND familyId = ?")
+      .run("approved", req.params.userId, req.params.familyId);
     if (result.changes === 0) {
-      return res.status(404).json({ success: false, error: "Member not found" });
+      return res.status(404).json({ success: false, error: "Member not found for this userId" });
     }
-    const member = db.prepare("SELECT * FROM family_members WHERE id = ?").get(req.params.memberId);
+    const member = db.prepare("SELECT * FROM family_members WHERE userId = ? AND familyId = ?").get(req.params.userId, req.params.familyId);
     res.json({ success: true, member });
   } catch (err) {
-    console.error("POST /api/families/:familyId/approve/:memberId error:", err);
+    console.error("POST /api/families/:familyId/approve/:userId error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

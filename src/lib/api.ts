@@ -85,9 +85,9 @@ export async function getFamilyMembers(familyId: string) {
   );
 }
 
-export async function approveMember(familyId: string, memberId: string) {
+export async function approveMember(familyId: string, userId: string) {
   return apiCall<{ success: boolean; member: any }>(
-    `/api/families/${encodeURIComponent(familyId)}/approve/${encodeURIComponent(memberId)}`,
+    `/api/families/${encodeURIComponent(familyId)}/approve/${encodeURIComponent(userId)}`,
     { method: "POST" },
   );
 }

@@ -246,6 +246,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
 
   approveMember: async (memberId: string) => {
     const family = get().family;
+    const targetMember = get().members.find((m) => m.id === memberId);
     db.runSync(
       `UPDATE family_members SET status = 'approved' WHERE id = ?`,
       [memberId]
@@ -256,8 +257,8 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     );
     set({ members });
 
-    if (family) {
-      enqueue('member', memberId, 'update', { familyId: family.id, memberId, status: 'approved' });
+    if (family && targetMember) {
+      enqueue('member', memberId, 'update', { familyId: family.id, userId: targetMember.userId, status: 'approved' });
     }
   },
 
