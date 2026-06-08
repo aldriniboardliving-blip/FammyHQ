@@ -40,26 +40,30 @@ export default function JoinFamilyScreen() {
     setError("");
   }, []);
 
+  const shake = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 1.03, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0.97, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 1.03, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+    ]).start();
+  }, [shakeAnim]);
+
   const handleJoin = useCallback(async () => {
     Keyboard.dismiss();
     if (inviteCode.length !== MAX_LENGTH) {
       setError(`Invite code must be ${MAX_LENGTH} characters`);
-      Animated.sequence([
-        Animated.timing(shakeAnim, { toValue: 1.03, duration: 60, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 0.97, duration: 60, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 1.03, duration: 60, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
-      ]).start();
+      shake();
       return;
     }
     if (!user) { setError("User not found"); return; }
     try {
       await joinFamily(inviteCode, user.id, user.role);
       router.push("/onboarding/join-success");
-    } catch {
-      setError("Invalid invite code. Please check and try again.");
+    } catch (e: any) {
+      setError(e.message || "Invalid invite code. Please check and try again.");
     }
-  }, [inviteCode, user, joinFamily, shakeAnim]);
+  }, [inviteCode, user, joinFamily, shake]);
 
   const handleQrPress = useCallback(() => {
     router.push("/qr-scan");
@@ -122,7 +126,14 @@ export default function JoinFamilyScreen() {
             keyboardType="ascii-capable"
           />
           {error ? (
-            <Text style={styles.error}>{error}</Text>
+            <>
+              <Text style={styles.error}>{error}</Text>
+              {error.includes("retried automatically") && (
+                <TouchableOpacity style={styles.retryBtn} onPress={handleJoin}>
+                  <Text style={styles.retryBtnText}>Try Again</Text>
+                </TouchableOpacity>
+              )}
+            </>
           ) : (
             <Text style={styles.hint}>{MAX_LENGTH - inviteCode.length} characters remaining</Text>
           )}
@@ -176,5 +187,7 @@ const styles = StyleSheet.create({
   hintCard: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.light.accentLight, borderRadius: BorderRadius.lg, padding: 14, gap: 10, marginTop: 8 },
   hintIcon: { fontSize: 16 },
   hintText: { fontSize: 13, color: Colors.light.textSecondary, flex: 1, lineHeight: 18 },
+  retryBtn: { backgroundColor: Colors.light.primary, paddingVertical: 8, paddingHorizontal: 20, borderRadius: BorderRadius.md, alignSelf: "center", marginTop: 8 },
+  retryBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   buttonContainer: { paddingHorizontal: 24, paddingVertical: 20, paddingBottom: 32 },
 });

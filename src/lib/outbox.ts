@@ -68,6 +68,8 @@ export async function processOutbox(): Promise<number> {
           entry.id,
         ]);
         processed++;
+      } else {
+        console.warn(`Outbox: ${entry.entityType}/${entry.entityId} pushToServer returned false`);
       }
     } catch (err) {
       console.error(`Outbox: failed to sync ${entry.entityType}/${entry.entityId}:`, err);

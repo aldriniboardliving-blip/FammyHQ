@@ -192,7 +192,7 @@ async function processPendingInvites() {
 let pullTimer: ReturnType<typeof setInterval> | null = null;
 let checkTimer: ReturnType<typeof setInterval> | null = null;
 
-export function startBackgroundSync(pullIntervalMs = 30000, checkIntervalMs = 10000) {
+export function startBackgroundSync(pullIntervalMs = 15000, checkIntervalMs = 10000) {
   stopBackgroundSync();
 
   checkTimer = setInterval(async () => {
@@ -200,10 +200,10 @@ export function startBackgroundSync(pullIntervalMs = 30000, checkIntervalMs = 10
   }, checkIntervalMs);
 
   pullTimer = setInterval(async () => {
-    const online = await checkConnectivity();
-    if (!online) return;
+    // Update connectivity state (doesn't block processing)
+    await checkConnectivity();
 
-    // 1. Push local changes to server
+    // 1. Push local changes to server (has own connectivity check)
     await processOutbox();
 
     // 2. Process any saved pending invites
