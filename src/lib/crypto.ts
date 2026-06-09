@@ -4,6 +4,18 @@ const PBKDF2_ITERATIONS = 600000;
 const KEY_SIZE = 256 / 32;
 
 /**
+ * Generate random bytes as a CryptoJS WordArray, bypassing crypto-js's
+ * native crypto detection which fails in React Native Hermes.
+ */
+function randomWordArray(nBytes: number) {
+  const words: number[] = [];
+  for (let i = 0; i < nBytes; i += 4) {
+    words.push((Math.random() * 0x100000000) >>> 0);
+  }
+  return CryptoJS.lib.WordArray.create(words, nBytes);
+}
+
+/**
  * Encrypt a payload using AES-256 with a key derived from the invite code.
  *
  * The invite code itself is used as the passphrase for PBKDF2,
@@ -15,8 +27,8 @@ export function encryptPayload(
   payload: object,
   code: string,
 ): { ciphertext: string; iv: string; salt: string } {
-  const salt = CryptoJS.lib.WordArray.random(16);
-  const iv = CryptoJS.lib.WordArray.random(16);
+  const salt = randomWordArray(16);
+  const iv = randomWordArray(16);
 
   const key = CryptoJS.PBKDF2(code.normalize("NFKC"), salt, {
     keySize: KEY_SIZE,
