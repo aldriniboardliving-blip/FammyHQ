@@ -152,6 +152,14 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         useUserStore.getState().setUser({ ...currentUser, familyId: localFamily.id });
       }
 
+      // Register on server (best-effort)
+      try {
+        await joinFamilyRemote(localFamily.id, userId, currentUser?.displayName, role);
+      } catch (err) {
+        console.warn('joinFamilyRemote (local path) threw:', err);
+      }
+      enqueue('member', memberId, 'create', { familyId: localFamily.id, userId, role, displayName: currentUser?.displayName });
+
       set({ family: localFamily, memberStatus: 'pending' });
       return localFamily;
     }
@@ -192,21 +200,23 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
           [memberId, decrypted.familyId, userId, role, 'pending', now]
         );
 
-        // Register on server (best-effort)
-        joinFamilyRemote(decrypted.familyId, userId, role).then((res) => {
-          if (!res.ok) {
-            console.warn('joinFamilyRemote failed:', res.error);
+        // Register on server (best-effort) — await so it has a chance to complete
+        // before the UI navigates away. Falls back to outbox if it fails.
+        const currentUser = useUserStore.getState().user;
+        try {
+          const joinRes = await joinFamilyRemote(decrypted.familyId, userId, currentUser?.displayName, role);
+          if (!joinRes.ok) {
+            console.warn('joinFamilyRemote failed:', joinRes.error);
           }
-        }).catch((err) => {
+        } catch (err) {
           console.warn('joinFamilyRemote threw:', err);
-        });
+        }
 
         // Also enqueue to outbox as fallback (retries every 10s)
-        enqueue('member', memberId, 'create', { familyId: decrypted.familyId, userId, role });
+        enqueue('member', memberId, 'create', { familyId: decrypted.familyId, userId, role, displayName: currentUser?.displayName });
 
         db.runSync('UPDATE users SET familyId = ?, updatedAt = ? WHERE id = ?', [decrypted.familyId, now, userId]);
 
-        const currentUser = useUserStore.getState().user;
         if (currentUser) {
           useUserStore.getState().setUser({ ...currentUser, familyId: decrypted.familyId });
         }

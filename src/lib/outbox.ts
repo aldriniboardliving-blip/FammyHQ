@@ -128,7 +128,7 @@ async function pushToServer(
         return ok;
       }
       if (operation === "create") {
-        const { ok } = await joinFamilyRemote(payload.familyId, payload.userId, payload.role);
+        const { ok } = await joinFamilyRemote(payload.familyId, payload.userId, payload.displayName || "", payload.role);
         return ok;
       }
       return false;
