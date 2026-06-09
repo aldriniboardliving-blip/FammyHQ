@@ -192,7 +192,7 @@ async function processPendingInvites() {
 let pullTimer: ReturnType<typeof setInterval> | null = null;
 let checkTimer: ReturnType<typeof setInterval> | null = null;
 
-export function startBackgroundSync(pullIntervalMs = 15000, checkIntervalMs = 10000) {
+export function startBackgroundSync(pullIntervalMs = 10000, checkIntervalMs = 10000) {
   stopBackgroundSync();
 
   checkTimer = setInterval(async () => {

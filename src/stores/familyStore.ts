@@ -4,7 +4,7 @@ import { generateId, generateInviteCode, normalizeInviteCode } from '@/lib/utils
 import { useUserStore } from './userStore';
 import { enqueue, processOutbox } from '@/lib/outbox';
 import { encryptPayload, decryptPayload } from '@/lib/crypto';
-import { joinFamilyRemote, pullInvitation } from '@/lib/api';
+import { joinFamilyRemote, pullInvitation, pushInvitation } from '@/lib/api';
 
 export interface Family {
   id: string;
@@ -84,24 +84,34 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     // Enqueue family for general sync (creates on server via outbox)
     enqueue('family', familyId, 'create', family);
 
-    // Enqueue encrypted invitation to relay server via outbox
-    // (retried automatically if offline)
+    // Push encrypted invitation to relay server (fire-and-forget)
     try {
       const payload = { familyId, name, inviteCode, createdBy: userId, createdAt: now };
       const { ciphertext, iv, salt } = encryptPayload(payload, inviteCode);
-      enqueue('invitation', `inv-${familyId}`, 'create', {
+
+      const inviteEntry = {
         code: inviteCode,
         ciphertext,
         iv,
         salt,
         familyId,
+      };
+
+      // Try direct push (don't block navigation)
+      pushInvitation(inviteEntry).then((res) => {
+        if (!res.ok) {
+          console.warn('Direct push failed:', res.error, '— enqueuing to outbox');
+          enqueue('invitation', `inv-${familyId}`, 'create', inviteEntry);
+          processOutbox().catch(() => {});
+        }
+      }).catch((err) => {
+        console.warn('Direct push threw:', err);
+        enqueue('invitation', `inv-${familyId}`, 'create', inviteEntry);
+        processOutbox().catch(() => {});
       });
     } catch (err) {
       console.warn('Failed to encrypt invitation:', err);
     }
-
-    // Push to server immediately (don't wait for 30s background interval)
-    processOutbox().catch(() => {});
 
     return family;
   },
