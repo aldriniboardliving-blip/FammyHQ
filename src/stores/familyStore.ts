@@ -191,7 +191,16 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         );
 
         // Register on server (best-effort)
-        joinFamilyRemote(decrypted.familyId, userId, role).catch(() => {});
+        joinFamilyRemote(decrypted.familyId, userId, role).then((res) => {
+          if (!res.ok) {
+            console.warn('joinFamilyRemote failed:', res.error);
+          }
+        }).catch((err) => {
+          console.warn('joinFamilyRemote threw:', err);
+        });
+
+        // Also enqueue to outbox as fallback (retries every 10s)
+        enqueue('member', memberId, 'create', { familyId: decrypted.familyId, userId, role });
 
         db.runSync('UPDATE users SET familyId = ?, updatedAt = ? WHERE id = ?', [decrypted.familyId, now, userId]);
 
