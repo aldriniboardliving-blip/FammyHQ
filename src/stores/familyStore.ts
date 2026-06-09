@@ -280,9 +280,9 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
   loadMembers: async (familyId: string) => {
     try {
       const results = db.getAllSync<FamilyMember & { displayName: string }>(
-        `SELECT fm.*, u.displayName 
+        `SELECT fm.*, COALESCE(u.displayName, fm.displayName, '') as displayName
          FROM family_members fm 
-         JOIN users u ON fm.userId = u.id 
+         LEFT JOIN users u ON fm.userId = u.id 
          WHERE fm.familyId = ?`,
         [familyId]
       );
