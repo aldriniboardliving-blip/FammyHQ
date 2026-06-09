@@ -54,19 +54,23 @@ router.post("/:id/join", (req, res) => {
   try {
     const { id } = req.params;
     const { userId, displayName, role } = req.body;
+    console.log(`[JOIN] familyId=${id} userId=${userId} displayName=${displayName} role=${role}`);
     if (!userId) {
+      console.log(`[JOIN] FAIL: missing userId`);
       return res.status(400).json({ success: false, error: "Missing userId" });
     }
 
     const db = getDb();
     const family = db.prepare("SELECT * FROM families WHERE id = ?").get(id);
     if (!family) {
+      console.log(`[JOIN] FAIL: family not found id=${id}`);
       return res.status(404).json({ success: false, error: "Family not found" });
     }
 
     // Check if already a member
     const existing = db.prepare("SELECT id FROM family_members WHERE familyId = ? AND userId = ?").get(id, userId);
     if (existing) {
+      console.log(`[JOIN] Already a member: userId=${userId}`);
       return res.json({ success: true, family, message: "Already a member" });
     }
 
@@ -76,9 +80,10 @@ router.post("/:id/join", (req, res) => {
       "INSERT INTO family_members (id, familyId, userId, displayName, role, status, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ).run(memberId, id, userId, displayName || "Member", role || "member", "pending", now);
 
+    console.log(`[JOIN] SUCCESS: memberId=${memberId} userId=${userId}`);
     res.json({ success: true, family, memberId });
   } catch (err) {
-    console.error("POST /api/families/:id/join error:", err);
+    console.error("[JOIN] ERROR:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -88,6 +93,7 @@ router.get("/:id/members", (req, res) => {
   try {
     const db = getDb();
     const members = db.prepare("SELECT * FROM family_members WHERE familyId = ?").all(req.params.id);
+    console.log(`[MEMBERS] familyId=${req.params.id} count=${members.length} ids=${members.map(m => m.userId).join(",")}`);
     res.json({ success: true, members });
   } catch (err) {
     console.error("GET /api/families/:id/members error:", err);
