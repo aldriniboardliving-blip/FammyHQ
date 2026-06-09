@@ -3,7 +3,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, BorderRadius } from "@/constants/theme";
 import { useFamilyStore } from "@/stores/familyStore";
@@ -15,19 +15,20 @@ export default function QRScanScreen() {
   const { joinFamily } = useFamilyStore();
   const { user } = useUserStore();
   const [scanning, setScanning] = useState(true);
+  const [isJoining, setIsJoining] = useState(false);
 
   const handleScan = useCallback(async (data: string) => {
     if (!scanning || !user?.id) return;
     setScanning(false);
+    setIsJoining(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     try {
       await joinFamily(data.trim(), user.id, user.role || "member");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Joined!", "You've joined the family. Waiting for approval.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      router.replace("/onboarding/awaiting-approval");
     } catch (e: any) {
+      setIsJoining(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", e.message || "Invalid invite code", [
         { text: "Try Again", onPress: () => setScanning(true) },
@@ -106,6 +107,16 @@ export default function QRScanScreen() {
           </View>
         </View>
       </View>
+
+      {isJoining && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.loadingText}>Joining family...</Text>
+            <Text style={styles.loadingHint}>Decrypting invitation</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -132,4 +143,28 @@ const styles = StyleSheet.create({
   manualRow: { flexDirection: "row", gap: 12 },
   manualBtn: { backgroundColor: "rgba(255,255,255,0.2)", paddingVertical: 12, paddingHorizontal: 24, borderRadius: 24 },
   manualBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  loadingCard: {
+    backgroundColor: "rgba(0,0,0,0.8)",
+    borderRadius: BorderRadius.lg,
+    padding: 32,
+    alignItems: "center",
+    gap: 12,
+    marginHorizontal: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  loadingHint: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.6)",
+  },
 });

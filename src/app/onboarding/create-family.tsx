@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFamilyStore } from "@/stores/familyStore";
@@ -20,6 +20,7 @@ export default function CreateFamilyScreen() {
   const [familyName, setFamilyName] = useState("");
   const [error, setError] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const { createFamily } = useFamilyStore();
   const { user } = useUserStore();
   const inputRef = useRef<TextInput>(null);
@@ -51,11 +52,13 @@ export default function CreateFamilyScreen() {
       return;
     }
     if (!user) { setError("User not found"); return; }
+    setIsCreating(true);
     try {
       await createFamily(familyName.trim(), user.id);
       router.push("/onboarding/family-created");
     } catch {
       setError("Failed to create family. Please try again.");
+      setIsCreating(false);
     }
   }, [familyName, user, createFamily, shakeAnim]);
 
@@ -161,10 +164,20 @@ export default function CreateFamilyScreen() {
             size="lg"
             icon="✨"
             onPress={handleSubmit}
-            disabled={!familyName.trim()}
+            disabled={!familyName.trim() || isCreating}
           />
         </View>
       </View>
+
+      {isCreating && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={Colors.light.primary} />
+            <Text style={styles.loadingText}>Creating your family...</Text>
+            <Text style={styles.loadingHint}>This may take a few seconds</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -204,4 +217,33 @@ const styles = StyleSheet.create({
   chipTextActive: { color: Colors.light.primary, fontWeight: "600" },
   chipCheck: { fontSize: 12, color: Colors.light.primary, fontWeight: "700" },
   buttonContainer: { marginTop: "auto", paddingBottom: 24 },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  loadingCard: {
+    backgroundColor: Colors.light.backgroundCard,
+    borderRadius: BorderRadius.lg,
+    padding: 32,
+    alignItems: "center",
+    gap: 12,
+    marginHorizontal: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.light.text,
+  },
+  loadingHint: {
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+  },
 });

@@ -29,6 +29,7 @@ export interface FamilyMember {
 interface FamilyStore {
   family: Family | null;
   members: FamilyMember[];
+  memberStatus: 'approved' | 'pending' | null;
   isLoading: boolean;
   pushStatus: 'idle' | 'pushing' | 'pushed' | 'failed';
   pushError: string;
@@ -46,6 +47,7 @@ interface FamilyStore {
 export const useFamilyStore = create<FamilyStore>((set, get) => ({
   family: null,
   members: [],
+  memberStatus: null,
   isLoading: true,
   pushStatus: 'idle',
   pushError: '',
@@ -83,7 +85,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
       [familyId, now, userId]
     );
 
-    set({ family });
+    set({ family, memberStatus: 'approved' });
 
     // Enqueue family for general sync (creates on server via outbox)
     enqueue('family', familyId, 'create', family);
@@ -150,7 +152,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         useUserStore.getState().setUser({ ...currentUser, familyId: localFamily.id });
       }
 
-      set({ family: localFamily });
+      set({ family: localFamily, memberStatus: 'pending' });
       return localFamily;
     }
 
@@ -217,7 +219,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
           createdAt: decrypted.createdAt,
           updatedAt: now,
         };
-        set({ family: remoteFamily });
+        set({ family: remoteFamily, memberStatus: 'pending' });
         return remoteFamily;
       }
 
@@ -238,8 +240,8 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
 
   loadFamily: async (userId: string) => {
     try {
-      const memberResult = db.getFirstSync<{ familyId: string }>(
-        'SELECT familyId FROM family_members WHERE userId = ? AND (status = ? OR status = ?) LIMIT 1',
+      const memberResult = db.getFirstSync<{ familyId: string; status: string }>(
+        'SELECT familyId, status FROM family_members WHERE userId = ? AND (status = ? OR status = ?) LIMIT 1',
         [userId, 'approved', 'pending']
       );
 
@@ -248,9 +250,9 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
           'SELECT * FROM families WHERE id = ?',
           [memberResult.familyId]
         );
-        set({ family: familyResult || null, isLoading: false });
+        set({ family: familyResult || null, memberStatus: memberResult.status as 'approved' | 'pending', isLoading: false });
       } else {
-        set({ isLoading: false });
+        set({ memberStatus: null, isLoading: false });
       }
     } catch (error) {
       console.error('Error loading family:', error);

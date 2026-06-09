@@ -27,6 +27,7 @@ function AnimatedCodeDots({ code, maxLength }: { code: string; maxLength: number
 export default function JoinFamilyScreen() {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
   const { joinFamily } = useFamilyStore();
   const { user } = useUserStore();
   const inputRef = useRef<TextInput>(null);
@@ -57,11 +58,13 @@ export default function JoinFamilyScreen() {
       return;
     }
     if (!user) { setError("User not found"); return; }
+    setIsJoining(true);
     try {
       await joinFamily(inviteCode, user.id, user.role);
-      router.push("/onboarding/join-success");
+      router.replace("/onboarding/awaiting-approval");
     } catch (e: any) {
       setError(e.message || "Invalid invite code. Please check and try again.");
+      setIsJoining(false);
     }
   }, [inviteCode, user, joinFamily, shake]);
 
@@ -148,7 +151,7 @@ export default function JoinFamilyScreen() {
       </View>
 
       <View style={styles.buttonContainer}>
-        <AnimatedButton label="Join Family" variant="primary" size="lg" icon="🚪" onPress={handleJoin} disabled={inviteCode.length !== MAX_LENGTH} />
+        <AnimatedButton label={isJoining ? "Joining..." : "Join Family"} variant="primary" size="lg" icon="🚪" onPress={handleJoin} disabled={inviteCode.length !== MAX_LENGTH || isJoining} />
       </View>
     </SafeAreaView>
   );

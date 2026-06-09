@@ -69,6 +69,13 @@ export default function RootLayout() {
             animation: "slide_from_right",
           }}
         />
+        <Stack.Screen
+          name="onboarding/awaiting-approval"
+          options={{
+            headerShown: false,
+            gestureEnabled: false,
+          }}
+        />
       </Stack>
     </>
   );

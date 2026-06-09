@@ -19,7 +19,7 @@ const { width } = Dimensions.get("window");
 
 export default function LandingScreen() {
   const { user, isLoading: userLoading } = useUserStore();
-  const { family, isLoading: familyLoading } = useFamilyStore();
+  const { family, isLoading: familyLoading, memberStatus } = useFamilyStore();
   const isLoading = userLoading || familyLoading;
 
   const titleAnim = useMemo(() => new Animated.Value(0), []);
@@ -45,12 +45,16 @@ export default function LandingScreen() {
   useEffect(() => {
     if (isLoading) return;
     if (!user) return;
-    if (family) {
+    if (family && memberStatus === "approved") {
+      router.replace("/(tabs)");
+    } else if (family && memberStatus === "pending") {
+      router.replace("/onboarding/awaiting-approval");
+    } else if (family) {
       router.replace("/(tabs)");
     } else {
       router.replace("/onboarding/family-setup");
     }
-  }, [isLoading, user, family]);
+  }, [isLoading, user, family, memberStatus]);
 
   useEffect(() => {
     if (isLoading) return;

@@ -244,7 +244,7 @@ async function pullRemoteData() {
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [m.id, m.familyId, m.userId, m.displayName ?? "", m.role, m.status, m.joinedAt ?? new Date().toISOString()],
         );
-      } else if (m.status === "approved") {
+      } else if (m.status === "approved" && existing) {
         // Update status to approved if server says so
         db.runSync(
           "UPDATE family_members SET status = ? WHERE userId = ? AND familyId = ?",
@@ -253,6 +253,19 @@ async function pullRemoteData() {
       }
     }
     await loadMembers(family.id);
+
+    // Check if the current user's status changed (e.g., pending → approved)
+    const myMember = db.getFirstSync<{ status: string }>(
+      "SELECT status FROM family_members WHERE userId = ? AND familyId = ?",
+      [user.id, family.id],
+    );
+    if (myMember) {
+      const status = myMember.status as 'approved' | 'pending';
+      const currentStatus = useFamilyStore.getState().memberStatus;
+      if (currentStatus !== status) {
+        useFamilyStore.setState({ memberStatus: status });
+      }
+    }
   }
 
   // Pull data from other devices
