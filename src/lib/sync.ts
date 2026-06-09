@@ -240,21 +240,22 @@ async function pullTasks(familyId: string) {
     const { ok, data } = await getFamilyTasks(familyId);
     if (!ok || !data?.tasks) return;
     for (const t of data.tasks) {
-      const existing = db.getFirstSync<{ id: string }>(
-        "SELECT id FROM tasks WHERE id = ?", [t.id],
+      db.runSync(
+        `INSERT INTO tasks (id, familyId, title, description, assignedTo, createdBy, dueDate, completed, completedAt, priority, reward, visibility, status, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           title = excluded.title,
+           description = excluded.description,
+           assignedTo = excluded.assignedTo,
+           dueDate = excluded.dueDate,
+           completed = excluded.completed,
+           completedAt = excluded.completedAt,
+           priority = excluded.priority,
+           reward = excluded.reward,
+           visibility = excluded.visibility,
+           status = excluded.status`,
+        [t.id, t.familyId, t.title, t.description, t.assignedTo, t.createdBy, t.dueDate, t.completed ?? 0, t.completedAt, t.priority, t.reward, t.visibility, t.status, t.createdAt],
       );
-      if (!existing) {
-        db.runSync(
-          `INSERT INTO tasks (id, familyId, title, description, assignedTo, createdBy, dueDate, completed, completedAt, priority, reward, visibility, status, createdAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [t.id, t.familyId, t.title, t.description, t.assignedTo, t.createdBy, t.dueDate, t.completed ?? 0, t.completedAt, t.priority, t.reward, t.visibility, t.status, t.createdAt],
-        );
-      } else if (t.status === "completed" && existing) {
-        db.runSync(
-          "UPDATE tasks SET completed = ?, status = ?, completedAt = ? WHERE id = ?",
-          [1, "completed", t.completedAt, t.id],
-        );
-      }
     }
     await useTaskStore.getState().loadTasks(familyId);
   } catch (err) {
@@ -267,16 +268,15 @@ async function pullAnnouncements(familyId: string) {
     const { ok, data } = await getFamilyAnnouncements(familyId);
     if (!ok || !data?.announcements) return;
     for (const a of data.announcements) {
-      const existing = db.getFirstSync<{ id: string }>(
-        "SELECT id FROM announcements WHERE id = ?", [a.id],
+      db.runSync(
+        `INSERT INTO announcements (id, familyId, title, content, priority, createdBy, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           title = excluded.title,
+           content = excluded.content,
+           priority = excluded.priority`,
+        [a.id, a.familyId, a.title, a.content, a.priority, a.createdBy, a.createdAt],
       );
-      if (!existing) {
-        db.runSync(
-          `INSERT INTO announcements (id, familyId, title, content, priority, createdBy, createdAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [a.id, a.familyId, a.title, a.content, a.priority, a.createdBy, a.createdAt],
-        );
-      }
     }
     await useAnnouncementStore.getState().loadAnnouncements(familyId);
   } catch (err) {
@@ -289,16 +289,18 @@ async function pullEvents(familyId: string) {
     const { ok, data } = await getFamilyEvents(familyId);
     if (!ok || !data?.events) return;
     for (const e of data.events) {
-      const existing = db.getFirstSync<{ id: string }>(
-        "SELECT id FROM calendar_events WHERE id = ?", [e.id],
+      db.runSync(
+        `INSERT INTO calendar_events (id, familyId, title, description, startDate, endDate, location, eventType, createdBy, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           title = excluded.title,
+           description = excluded.description,
+           startDate = excluded.startDate,
+           endDate = excluded.endDate,
+           location = excluded.location,
+           eventType = excluded.eventType`,
+        [e.id, e.familyId, e.title, e.description, e.startDate, e.endDate, e.location, e.eventType, e.createdBy, e.createdAt],
       );
-      if (!existing) {
-        db.runSync(
-          `INSERT INTO calendar_events (id, familyId, title, description, startDate, endDate, location, eventType, createdBy, createdAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [e.id, e.familyId, e.title, e.description, e.startDate, e.endDate, e.location, e.eventType, e.createdBy, e.createdAt],
-        );
-      }
     }
     await useCalendarStore.getState().loadEvents(familyId);
   } catch (err) {

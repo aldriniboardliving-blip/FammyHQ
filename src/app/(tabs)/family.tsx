@@ -51,7 +51,7 @@ export default function FamilyScreen() {
     setRefreshing(false);
   }, [family, loadMembers]);
 
-  const pendingMembers = members.filter((m) => m.status === "pending");
+  const pendingMembers = members.filter((m) => m.status === "pending" && m.userId !== user?.id);
   const approvedMembers = members.filter((m) => m.status === "approved");
   const isAdmin = user?.role === "parent" || user?.role === "co-parent";
   const isCreator = user?.id === family?.createdBy;

@@ -4,7 +4,7 @@ import { generateId, generateInviteCode, normalizeInviteCode } from '@/lib/utils
 import { useUserStore } from './userStore';
 import { enqueue, processOutbox } from '@/lib/outbox';
 import { encryptPayload, decryptPayload } from '@/lib/crypto';
-import { joinFamilyRemote, pullInvitation, pushInvitation } from '@/lib/api';
+import { joinFamilyRemote, pullInvitation, pushInvitation, syncFamily } from '@/lib/api';
 
 export interface Family {
   id: string;
@@ -89,6 +89,12 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
 
     // Enqueue family for general sync (creates on server via outbox)
     enqueue('family', familyId, 'create', family);
+
+    // Direct sync family to server NOW so it's available immediately
+    // (the outbox will retry if this fails)
+    syncFamily({ id: familyId, name, inviteCode, createdBy: userId, createdAt: now }).catch((err) => {
+      console.warn('Direct syncFamily failed (outbox will retry):', err);
+    });
 
     // Push encrypted invitation to relay server (fire-and-forget)
     set({ pushStatus: 'pushing', pushError: '' });
