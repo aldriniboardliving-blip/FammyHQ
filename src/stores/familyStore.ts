@@ -211,6 +211,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         const currentUser = useUserStore.getState().user;
         try {
           const joinRes = await joinFamilyRemote(decrypted.familyId, userId, currentUser?.displayName, role);
+          console.log(`[JOIN] joinFamilyRemote result: ok=${joinRes.ok} error=${joinRes.error || "none"} familyId=${decrypted.familyId} userId=${userId}`);
           if (!joinRes.ok) {
             console.warn('joinFamilyRemote failed:', joinRes.error);
           }
