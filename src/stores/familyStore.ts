@@ -30,6 +30,8 @@ interface FamilyStore {
   family: Family | null;
   members: FamilyMember[];
   isLoading: boolean;
+  pushStatus: 'idle' | 'pushing' | 'pushed' | 'failed';
+  pushError: string;
   setFamily: (family: Family | null) => void;
   setLoading: (loading: boolean) => void;
   createFamily: (name: string, userId: string) => Promise<Family>;
@@ -45,6 +47,8 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
   family: null,
   members: [],
   isLoading: true,
+  pushStatus: 'idle',
+  pushError: '',
 
   setFamily: (family) => set({ family }),
   setLoading: (loading) => set({ isLoading: loading }),
@@ -85,6 +89,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     enqueue('family', familyId, 'create', family);
 
     // Push encrypted invitation to relay server (fire-and-forget)
+    set({ pushStatus: 'pushing', pushError: '' });
     try {
       const payload = { familyId, name, inviteCode, createdBy: userId, createdAt: now };
       const { ciphertext, iv, salt } = encryptPayload(payload, inviteCode);
@@ -99,17 +104,22 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
 
       // Try direct push (don't block navigation)
       pushInvitation(inviteEntry).then((res) => {
-        if (!res.ok) {
+        if (res.ok) {
+          set({ pushStatus: 'pushed' });
+        } else {
+          set({ pushStatus: 'failed', pushError: res.error || 'Push returned error' });
           console.warn('Direct push failed:', res.error, '— enqueuing to outbox');
           enqueue('invitation', `inv-${familyId}`, 'create', inviteEntry);
           processOutbox().catch(() => {});
         }
       }).catch((err) => {
+        set({ pushStatus: 'failed', pushError: err?.message || 'Push threw' });
         console.warn('Direct push threw:', err);
         enqueue('invitation', `inv-${familyId}`, 'create', inviteEntry);
         processOutbox().catch(() => {});
       });
     } catch (err) {
+      set({ pushStatus: 'failed', pushError: err instanceof Error ? err.message : String(err) });
       console.warn('Failed to encrypt invitation:', err);
     }
 

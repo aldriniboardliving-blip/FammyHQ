@@ -6,16 +6,18 @@ import {
 } from "@/components/ui/animated-section";
 import { BorderRadius, Colors } from "@/constants/theme";
 import { useFamilyStore } from "@/stores/familyStore";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function FamilyCreatedScreen() {
-  const { family } = useFamilyStore();
+  const { family, pushStatus, pushError } = useFamilyStore();
 
   if (!family) {
     return null;
   }
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -52,6 +54,30 @@ export default function FamilyCreatedScreen() {
               <Text style={styles.codeHintText}>
                 Share this with family members
               </Text>
+            </View>
+
+            {/* Push status indicator */}
+            <View style={styles.pushStatusRow}>
+              {pushStatus === "pushing" && (
+                <>
+                  <ActivityIndicator size="small" color={Colors.light.primary} />
+                  <Text style={styles.pushStatusText}>Syncing invitation to server...</Text>
+                </>
+              )}
+              {pushStatus === "pushed" && (
+                <>
+                  <Ionicons name="checkmark-circle" size={16} color={Colors.light.success} />
+                  <Text style={[styles.pushStatusText, { color: Colors.light.success }]}>Invitation synced</Text>
+                </>
+              )}
+              {pushStatus === "failed" && (
+                <>
+                  <Ionicons name="alert-circle" size={16} color={Colors.light.danger} />
+                  <Text style={[styles.pushStatusText, { color: Colors.light.danger }]}>
+                    {pushError || "Sync failed"}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
         </AnimatedListItem>
@@ -183,6 +209,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.light.primary,
     fontWeight: "500",
+  },
+  pushStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  pushStatusText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: Colors.light.textTertiary,
   },
   buttonGroup: {
     gap: 10,
